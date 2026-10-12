@@ -1,11 +1,12 @@
 const mineflayer = require('mineflayer');
 const express = require('express');
 
+// สร้างเว็บเซิร์ฟเวอร์ Express เพื่อเปิดพอร์ตให้ Render ใช้งานตลอด 24 ชั่วโมง
 const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.get('/', (req, res) => {
-  res.send('Minecraft Bot Status: Online!');
+  res.send('Minecraft Bot Status: Online & Ready!');
 });
 
 app.listen(PORT, () => {
@@ -21,51 +22,48 @@ function createBot() {
   });
 
   bot.on('spawn', () => {
-    console.log('✅ บอทเข้าสู่เซิร์ฟเวอร์แล้ว');
+    console.log('✅ บอทเข้าสู่เซิร์ฟเวอร์แล้ว กำลังทำรายการ...');
 
-    // 1. ส่งคำสั่งล็อกอิน
+    // 1. ส่งคำสั่งล็อกอินและสมัครสมาชิกอัตโนมัติ
     setTimeout(() => {
       const password = 'MyPassword123'; // ⚠️ เปลี่ยนเป็นรหัสผ่านของคุณ
       bot.chat(`/register ${password} ${password}`);
       bot.chat(`/login ${password}`);
       console.log('🔑 ส่งคำสั่ง Register / Login เรียบร้อย');
-    }, 2000);
+    }, 3000);
 
-    // 2. ถือเข็มทิศและกดคลิกขวาเปิดเมนู SERVER SELECTOR
+    // 2. ควักเข็มทิศขึ้นมาถือและคลิกขวาเปิดเมนู SERVER SELECTOR
     setTimeout(async () => {
-      const compass = bot.inventory.items().find(item => item.name.includes('compass'));
+      const compass = bot.inventory.items().find(item => item.name.includes('compass') || item.name.includes('clock'));
       if (compass) {
         await bot.equip(compass, 'hand');
         bot.activateItem();
         console.log('🧭 คลิกขวาใช้เข็มทิศเพื่อเปิดเมนูแล้ว');
       } else {
-        bot.activateItem(); // หากไม่พบเข็มทิศ ให้ลองคลิกขวาไอเทมในมือตรงๆ
-        console.log('👆 คลิกขวาเปิดเมนู');
+        // หากไม่เจอในช่องเก็บของ ให้คลิกขวาไอเทมในมือหลักทันที
+        bot.activateItem();
+        console.log('👆 คลิกขวาเปิดเมนูด้วยไอเทมในมือ');
       }
-    }, 5000);
+    }, 6000);
   });
 
-  // 3. เมื่อเมนู SERVER SELECTOR เปิดขึ้นมา -> สั่งคลิกบล็อกหญ้าทันที
+  // 3. ระบบดักจับหน้าต่างเมนู (GUI) เมื่อเปิดขึ้นมา
   bot.on('windowOpen', async (window) => {
-    console.log('🪟 หน้าต่างเมนูเปิดแล้ว กำลังคลิกบล็อกหญ้า...');
+    console.log('🪟 หน้าต่างเมนู GUI เปิดขึ้นมาแล้ว!');
 
-    // รอ 1 วินาทีให้เมนูโหลดไอเทมครบ
+    // รอ 1 วินาทีให้ช่องในหน้าต่างโหลดข้อมูลไอเทมครบ
     setTimeout(async () => {
-      // ค้นหาช่องที่มีบล็อกหญ้า (grass_block) หรือคลิกช่องสล็อตหมายเลข 10 ตรงๆ
-      const grassItem = window.slots.find(item => item && item.name.includes('grass'));
-
-      if (grassItem) {
-        await bot.clickWindow(grassItem.slot, 0, 0);
-        console.log(`🌱 คลิกบล็อกหญ้าที่ช่อง ${grassItem.slot} สำเร็จ!`);
-      } else {
-        // หากหาชื่อไม่เจอ ให้กดบังคับคลิกช่องสล็อตที่ 10 โดยตรง
+      try {
+        // บังคับคลิกช่องสล็อตที่ 10 ทันที (ที่เป็นบล็อกหญ้าตามภาพที่คุณส่งมา)
         await bot.clickWindow(10, 0, 0);
-        console.log('🌱 บังคับคลิกช่องสล็อตที่ 10 สำเร็จ!');
+        console.log('🌱 คลิกบล็อกหญ้าที่ช่อง 10 สำเร็จ!');
+      } catch (err) {
+        console.log('⚠️ เกิดข้อผิดพลาดในการคลิกเมนู:', err.message);
       }
     }, 1000);
   });
 
-  // ระบบ Anti-AFK (กระโดดทุก 30 วินาที)
+  // ระบบกันโดนเตะ AFK (ขยับตัว/กระโดดเบาๆ ทุก 30 วินาที)
   setInterval(() => {
     if (bot && bot.entity) {
       bot.setControlState('jump', true);
@@ -73,8 +71,9 @@ function createBot() {
     }
   }, 30000);
 
-  bot.on('end', () => {
-    console.log('⚠️ บอทหลุดจากเซิร์ฟเวอร์ กำลังเชื่อมต่อใหม่ใน 10 วินาที...');
+  // ระบบเชื่อมต่อใหม่เมื่อหลุดจากเซิร์ฟเวอร์
+  bot.on('end', (reason) => {
+    console.log(`⚠️ บอทหลุดจากเซิร์ฟเวอร์ (สาเหตุ: ${reason}) กำลังเชื่อมต่อใหม่ใน 10 วินาที...`);
     setTimeout(createBot, 10000);
   });
 
